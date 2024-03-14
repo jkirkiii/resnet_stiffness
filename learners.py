@@ -1,9 +1,13 @@
 import time
 import torch
 
+# TODO:
+def our_loss_function(model, inputs):
+    return 0
+
 def score(outputs, labels): return torch.sum(torch.eq(labels, torch.argmax(outputs, dim=1))).item()
 
-def train(model, data, device, objective, optimizer):
+def train(model, data, device, objective, optimizer, ours=False):
     model.train(True)
 
     running_correct, running_loss = 0, 0
@@ -12,7 +16,8 @@ def train(model, data, device, objective, optimizer):
         inputs, labels = inputs.to(device), labels.to(device)
 
         outputs = model(inputs)
-        loss = objective(outputs, labels)
+        our_loss = our_loss_function(model, inputs) if ours else 0
+        loss = objective(outputs, labels) + our_loss
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()

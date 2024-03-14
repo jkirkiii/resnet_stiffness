@@ -59,6 +59,7 @@ parser.add_argument('--save-dir', dest='save_dir',
 parser.add_argument('--save-every', dest='save_every',
                     help='Saves checkpoints at every specified number of epochs',
                     type=int, default=10)
+parser.add_argument('--ours', action=argparse.BooleanOptionalAction, default=False, type=bool)
 best_prec1 = 0
 
 
@@ -155,7 +156,7 @@ def main():
         epoch_time = time.time()
         # train for one epoch
         # print('current lr {:.5e}'.format(optimizer.param_groups[0]['lr']))
-        train_accuracy, train_loss = _train(model, train_loader, device, criterion, optimizer)
+        train_accuracy, train_loss = _train(model, train_loader, device, criterion, optimizer, args.ours)
         test_accuracy, test_loss = _test(model, val_loader, device, criterion)
         # train(train_loader, model, criterion, optimizer, epoch)
         # lr_scheduler.step()

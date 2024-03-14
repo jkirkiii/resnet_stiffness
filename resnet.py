@@ -118,6 +118,87 @@ class ResNet(nn.Module):
         out = self.linear(out)
         return out
 
+    def first_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        block = self.layer1[0]
+        block_input = out
+        return block, block_input
+
+    def second_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.layer1[0](out)
+        block = self.layer1[1]
+        block_input = out
+        return block, block_input
+
+    def third_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.layer1[0](out)
+        out = self.layer1[1](out)
+        block = self.layer2[0]
+        block_input = out
+        return block, block_input
+
+    def fourth_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.layer1(out)
+        out = self.layer2[0](out)
+        block = self.layer2[1]
+        block_input = out
+        return block, block_input
+
+    def fith_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        block = self.layer3[0]
+        block_input = out
+        return block, block_input
+
+    def sixth_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3[0](out)
+        block = self.layer3[1]
+        block_input = out
+        return block, block_input
+
+    def seventh_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        block = self.layer4[0]
+        block_input = out
+        return block, block_input
+
+    def eighth_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4[0](out)
+        block = self.layer4[1]
+        block_input = out
+        return block, block_input
+
 
 def resnet20():
     return ResNet(BasicBlock, [3, 3, 3])

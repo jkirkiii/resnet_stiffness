@@ -2,6 +2,7 @@ import argparse
 import os
 import shutil
 import time
+import pathlib
 
 import torch
 import torch.nn as nn
@@ -13,12 +14,15 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import resnet
 
+from learners import train as _train, test as _test
+from utils import format_time, logger
+
 model_names = sorted(name for name in resnet.__dict__
     if name.islower() and not name.startswith("__")
                      and name.startswith("resnet")
                      and callable(resnet.__dict__[name]))
 
-print(model_names)
+# print(model_names)
 
 parser = argparse.ArgumentParser(description='Propert ResNets for CIFAR10 in pytorch')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet32',
@@ -31,7 +35,7 @@ parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=128, type=int,
+parser.add_argument('-b', '--batch-size', default=256, type=int,
                     metavar='N', help='mini-batch size (default: 128)')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate')
@@ -68,7 +72,8 @@ def main():
         os.makedirs(args.save_dir)
 
     model = torch.nn.DataParallel(resnet.__dict__[args.arch]())
-    model.cuda()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model.to(device)
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -117,8 +122,15 @@ def main():
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
-    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                        milestones=[100, 150], last_epoch=args.start_epoch - 1)
+    # lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+    #                                                     milestones=[100, 150], last_epoch=args.start_epoch - 1)
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode='min',
+        factor=.1,
+        patience=10,
+    )
 
     if args.arch in ['resnet1202', 'resnet110']:
         # for resnet1202 original paper uses lr=0.01 for first 400 minibatches for warm-up
@@ -128,34 +140,60 @@ def main():
 
 
     if args.evaluate:
-        validate(val_loader, model, criterion)
+        # validate(val_loader, model, criterion)
         return
+    
+    best = {'train_loss': float('inf'), 'train_epoch': 0, 'test_loss': float('inf'), 'test_epoch': 0}
+    save_path = pathlib.Path('checkpoints')
+    log_path = pathlib.Path('log')
+    save_path.mkdir(exist_ok=True)
+    log_path.mkdir(exist_ok=True)
 
-    for epoch in range(args.start_epoch, args.epochs):
+    start_time = time.time()
 
+    for epoch in range(1, args.epochs+1):
+        epoch_time = time.time()
         # train for one epoch
-        print('current lr {:.5e}'.format(optimizer.param_groups[0]['lr']))
-        train(train_loader, model, criterion, optimizer, epoch)
-        lr_scheduler.step()
+        # print('current lr {:.5e}'.format(optimizer.param_groups[0]['lr']))
+        train_accuracy, train_loss = _train(model, train_loader, device, criterion, optimizer)
+        test_accuracy, test_loss = _test(model, val_loader, device, criterion)
+        # train(train_loader, model, criterion, optimizer, epoch)
+        # lr_scheduler.step()
+        scheduler.step(train_loss)
+
+        if train_loss < best['train_loss']: best['train_loss'], best['train_epoch'] = train_loss, epoch
+        if test_loss < best['test_loss']: best['test_loss'], best['test_epoch']= test_loss, epoch
+
+        torch.save(model.state_dict(), save_path / f'{epoch:03}.pt')
+
+        end_time = time.time()
+
+        logger([
+            epoch, train_accuracy, train_loss, best['train_epoch'], test_accuracy, test_loss, best['test_epoch'],
+            format_time(end_time - start_time),
+            format_time((end_time - start_time) * (args.epochs - epoch) / epoch),
+            format_time(end_time - epoch_time),
+            *(scheduler.get_last_lr() if scheduler != None else []),
+        ], log_path, name=args.arch)
 
         # evaluate on validation set
-        prec1 = validate(val_loader, model, criterion)
+        # prec1 = validate(val_loader, model, criterion)
 
         # remember best prec@1 and save checkpoint
-        is_best = prec1 > best_prec1
-        best_prec1 = max(prec1, best_prec1)
+        # is_best = prec1 > best_prec1
+        # best_prec1 = max(prec1, best_prec1)
 
-        if epoch > 0 and epoch % args.save_every == 0:
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'best_prec1': best_prec1,
-            }, is_best, filename=os.path.join(args.save_dir, 'checkpoint.th'))
+        # if epoch > 0 and epoch % args.save_every == 0:
+        #     save_checkpoint({
+        #         'epoch': epoch + 1,
+        #         'state_dict': model.state_dict(),
+        #         'best_prec1': best_prec1,
+        #     }, is_best, filename=os.path.join(args.save_dir, 'checkpoint.th'))
 
-        save_checkpoint({
-            'state_dict': model.state_dict(),
-            'best_prec1': best_prec1,
-        }, is_best, filename=os.path.join(args.save_dir, 'model.th'))
+        # save_checkpoint({
+        #     'state_dict': model.state_dict(),
+        #     'best_prec1': best_prec1,
+        # }, is_best, filename=os.path.join(args.save_dir, 'model.th'))
 
 
 def train(train_loader, model, criterion, optimizer, epoch):

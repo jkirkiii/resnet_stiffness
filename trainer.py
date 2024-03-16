@@ -14,6 +14,8 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import resnet
 
+from resnet import StiffnessLoss
+
 from learners import train as _train, test as _test
 from utils import format_time, logger
 
@@ -149,6 +151,8 @@ def main():
     log_path = pathlib.Path('log')
     save_path.mkdir(exist_ok=True)
     log_path.mkdir(exist_ok=True)
+
+    stiffness_loss = StiffnessLoss(.1, args.batch_size)
 
     start_time = time.time()
 

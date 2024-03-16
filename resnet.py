@@ -74,7 +74,7 @@ class StiffnessLoss:
         for pair in tuples:
             eigen_maxes.append(self.calculate_stiffness(pair[0], pair[1]))
 
-        return torch.mean(torch.tensor(eigen_maxes)) * self.rate
+        return torch.mean(torch.tensor(eigen_maxes)) * self.rate / self.batch_size
 
     def calculate_stiffness(self, block, inputs):
         jacobians = torch.autograd.functional.jacobian(block, inputs)

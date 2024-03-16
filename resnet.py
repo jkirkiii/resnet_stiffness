@@ -53,6 +53,31 @@ class LambdaLayer(nn.Module):
         return self.lambd(x)
 
 
+class StiffnessLoss:
+    def __init__(self, rate):
+        self.rate = rate
+
+    def get_loss(self, model, inputs):
+        tuples = []
+        tuples.append(model.first_block(inputs))
+        tuples.append(model.second_block(inputs))
+        tuples.append(model.third_block(inputs))
+        tuples.append(model.fourth_block(inputs))
+
+
+    def calculate_stiffness(self, block, inputs):
+        jacobians = torch.autograd.functional.jacobian(block, inputs)
+        eigen_values = self.get_eigenvalues(jacobians)
+        eigen_max = torch.max(eigen_values)
+        eigen_max *= self.rate
+        return eigen_max
+
+    def get_eigenvalues(self, jacobians):
+        eigen_values, eigen_vectors = torch.linalg.eig(jacobians)
+        return eigen_values
+
+
+
 class BasicBlock(nn.Module):
     expansion = 1
 
@@ -141,7 +166,7 @@ class ResNet(nn.Module):
         out = self.relu(out)
         out = self.layer1[0](out)
         out = self.layer1[1](out)
-        block = self.layer2[0]
+        block = self.layer1[2]
         block_input = out
         return block, block_input
 
@@ -149,9 +174,10 @@ class ResNet(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.layer1(out)
-        out = self.layer2[0](out)
-        block = self.layer2[1]
+        out = self.layer1[0](out)
+        out = self.layer1[1](out)
+        out = self.layer1[2](out)
+        block = self.layer2[0]
         block_input = out
         return block, block_input
 
@@ -159,9 +185,11 @@ class ResNet(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.layer1(out)
-        out = self.layer2(out)
-        block = self.layer3[0]
+        out = self.layer1[0](out)
+        out = self.layer1[1](out)
+        out = self.layer1[2](out)
+        out = self.layer2[0](out)
+        block = self.layer2[1]
         block_input = out
         return block, block_input
 
@@ -169,10 +197,12 @@ class ResNet(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3[0](out)
-        block = self.layer3[1]
+        out = self.layer1[0](out)
+        out = self.layer1[1](out)
+        out = self.layer1[2](out)
+        out = self.layer2[0](out)
+        out = self.layer2[1](out)
+        block = self.layer2[2]
         block_input = out
         return block, block_input
 
@@ -180,10 +210,13 @@ class ResNet(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        block = self.layer4[0]
+        out = self.layer1[0](out)
+        out = self.layer1[1](out)
+        out = self.layer1[2](out)
+        out = self.layer2[0](out)
+        out = self.layer2[1](out)
+        out = self.layer2[2](out)
+        block = self.layer3[0]
         block_input = out
         return block, block_input
 
@@ -191,14 +224,32 @@ class ResNet(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4[0](out)
-        block = self.layer4[1]
+        out = self.layer1[0](out)
+        out = self.layer1[1](out)
+        out = self.layer1[2](out)
+        out = self.layer2[0](out)
+        out = self.layer2[1](out)
+        out = self.layer2[2](out)
+        out = self.layer3[0](out)
+        block = self.layer3[1]
         block_input = out
         return block, block_input
 
+    def ninth_block(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.layer1[0](out)
+        out = self.layer1[1](out)
+        out = self.layer1[2](out)
+        out = self.layer2[0](out)
+        out = self.layer2[1](out)
+        out = self.layer2[2](out)
+        out = self.layer3[0](out)
+        out = self.layer3[1](out)
+        block = self.layer3[2]
+        block_input = out
+        return block, block_input
 
 def resnet20():
     return ResNet(BasicBlock, [3, 3, 3])

@@ -54,8 +54,9 @@ class LambdaLayer(nn.Module):
 
 
 class StiffnessLoss:
-    def __init__(self, rate):
+    def __init__(self, rate, batch_size):
         self.rate = rate
+        self.batch_size = batch_size
 
     def get_loss(self, model, inputs):
         tuples = []
@@ -63,19 +64,26 @@ class StiffnessLoss:
         tuples.append(model.second_block(inputs))
         tuples.append(model.third_block(inputs))
         tuples.append(model.fourth_block(inputs))
+        tuples.append(model.fifth_block(inputs))
+        tuples.append(model.sixth_block(inputs))
+        tuples.append(model.seventh_block(inputs))
+        tuples.append(model.eighth_block(inputs))
+        tuples.append(model.ninth_block(inputs))
 
+        eigen_maxes = []
+        for pair in tuples:
+            eigen_maxes.append(self.calculate_stiffness(pair[0], pair[1]))
+
+        return torch.mean(torch.tensor(eigen_maxes)) * self.rate
 
     def calculate_stiffness(self, block, inputs):
         jacobians = torch.autograd.functional.jacobian(block, inputs)
         eigen_values = self.get_eigenvalues(jacobians)
-        eigen_max = torch.max(eigen_values)
-        eigen_max *= self.rate
-        return eigen_max
+        return torch.max(eigen_values)
 
     def get_eigenvalues(self, jacobians):
         eigen_values, eigen_vectors = torch.linalg.eig(jacobians)
         return eigen_values
-
 
 
 class BasicBlock(nn.Module):

@@ -3,7 +3,7 @@ import torch
 
 # TODO:
 def our_loss_function(model, inputs):
-    return 0
+    return inputs / 2
 
 def score(outputs, labels): return torch.sum(torch.eq(labels, torch.argmax(outputs, dim=1))).item()
 

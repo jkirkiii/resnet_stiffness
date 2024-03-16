@@ -12,6 +12,7 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+from resnet import resnet20
 import resnet
 
 from resnet import StiffnessLoss
@@ -31,7 +32,7 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet32',
                     choices=model_names,
                     help='model architecture: ' + ' | '.join(model_names) +
                     ' (default: resnet32)')
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
@@ -74,7 +75,7 @@ def main():
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
-    model = torch.nn.DataParallel(resnet.__dict__[args.arch]())
+    model = resnet20()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.to(device)
 
@@ -160,7 +161,7 @@ def main():
         epoch_time = time.time()
         # train for one epoch
         # print('current lr {:.5e}'.format(optimizer.param_groups[0]['lr']))
-        train_accuracy, train_loss = _train(model, train_loader, device, criterion, optimizer, args.ours)
+        train_accuracy, train_loss, our_loss = _train(model, train_loader, device, criterion, optimizer, stiffness_loss)
         test_accuracy, test_loss = _test(model, val_loader, device, criterion)
         # train(train_loader, model, criterion, optimizer, epoch)
         # lr_scheduler.step()
@@ -174,7 +175,9 @@ def main():
         end_time = time.time()
 
         logger([
-            epoch, train_accuracy, train_loss, best['train_epoch'], test_accuracy, test_loss, best['test_epoch'],
+            epoch,
+            our_loss,
+            train_accuracy, train_loss, best['train_epoch'], test_accuracy, test_loss, best['test_epoch'],
             format_time(end_time - start_time),
             format_time((end_time - start_time) * (args.epochs - epoch) / epoch),
             format_time(end_time - epoch_time),

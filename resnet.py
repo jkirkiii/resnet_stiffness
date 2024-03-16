@@ -58,17 +58,17 @@ class StiffnessLoss:
         self.rate = rate
         self.batch_size = batch_size
 
-    def get_loss(self, model, inputs):
+    def __call__(self, model, inputs):
         tuples = []
         tuples.append(model.first_block(inputs))
-        tuples.append(model.second_block(inputs))
-        tuples.append(model.third_block(inputs))
-        tuples.append(model.fourth_block(inputs))
-        tuples.append(model.fifth_block(inputs))
-        tuples.append(model.sixth_block(inputs))
-        tuples.append(model.seventh_block(inputs))
-        tuples.append(model.eighth_block(inputs))
-        tuples.append(model.ninth_block(inputs))
+        # tuples.append(model.second_block(inputs))
+        # tuples.append(model.third_block(inputs))
+        # tuples.append(model.fourth_block(inputs))
+        # tuples.append(model.fifth_block(inputs))
+        # tuples.append(model.sixth_block(inputs))
+        # tuples.append(model.seventh_block(inputs))
+        # tuples.append(model.eighth_block(inputs))
+        # tuples.append(model.ninth_block(inputs))
 
         eigen_maxes = []
         for pair in tuples:
@@ -77,7 +77,9 @@ class StiffnessLoss:
         return torch.mean(torch.tensor(eigen_maxes)) * self.rate / self.batch_size
 
     def calculate_stiffness(self, block, inputs):
+        print('* * * 1')
         jacobians = torch.autograd.functional.jacobian(block, inputs)
+        print('* * * 2')
         eigen_values = self.get_eigenvalues(jacobians)
         return torch.max(eigen_values)
 
@@ -154,7 +156,7 @@ class ResNet(nn.Module):
     def first_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         block = self.layer1[0]
         block_input = out
         return block, block_input
@@ -162,7 +164,7 @@ class ResNet(nn.Module):
     def second_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.layer1[0](out)
         block = self.layer1[1]
         block_input = out
@@ -171,7 +173,7 @@ class ResNet(nn.Module):
     def third_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.layer1[0](out)
         out = self.layer1[1](out)
         block = self.layer1[2]
@@ -181,7 +183,7 @@ class ResNet(nn.Module):
     def fourth_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.layer1[0](out)
         out = self.layer1[1](out)
         out = self.layer1[2](out)
@@ -189,10 +191,10 @@ class ResNet(nn.Module):
         block_input = out
         return block, block_input
 
-    def fith_block(self, x):
+    def fifth_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.layer1[0](out)
         out = self.layer1[1](out)
         out = self.layer1[2](out)
@@ -204,7 +206,7 @@ class ResNet(nn.Module):
     def sixth_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.layer1[0](out)
         out = self.layer1[1](out)
         out = self.layer1[2](out)
@@ -217,7 +219,7 @@ class ResNet(nn.Module):
     def seventh_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.layer1[0](out)
         out = self.layer1[1](out)
         out = self.layer1[2](out)
@@ -231,7 +233,7 @@ class ResNet(nn.Module):
     def eighth_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.layer1[0](out)
         out = self.layer1[1](out)
         out = self.layer1[2](out)
@@ -246,7 +248,7 @@ class ResNet(nn.Module):
     def ninth_block(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.layer1[0](out)
         out = self.layer1[1](out)
         out = self.layer1[2](out)

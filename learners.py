@@ -7,7 +7,7 @@ def our_loss_function(model, inputs):
 
 def score(outputs, labels): return torch.sum(torch.eq(labels, torch.argmax(outputs, dim=1))).item()
 
-def train(model, data, device, objective, optimizer, ours=False):
+def train(model, data, device, objective, optimizer, stiffness_loss):
     model.train(True)
 
     running_correct, running_loss = 0, 0
@@ -16,7 +16,9 @@ def train(model, data, device, objective, optimizer, ours=False):
         inputs, labels = inputs.to(device), labels.to(device)
 
         outputs = model(inputs)
-        our_loss = our_loss_function(model, inputs) if ours else 0
+        our_loss = 0
+        # with torch.no_grad():
+        our_loss = stiffness_loss(model, inputs)
         loss = objective(outputs, labels) + our_loss
         loss.backward()
         optimizer.step()
@@ -27,7 +29,7 @@ def train(model, data, device, objective, optimizer, ours=False):
 
     average_accuracy = running_correct*100 / len(data.dataset)
     average_loss = running_loss / len(data.dataset)
-    return average_accuracy, average_loss
+    return average_accuracy, average_loss, our_loss
 
 def test(model, data, device, objective):
     model.train(False)

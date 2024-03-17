@@ -45,32 +45,57 @@ class StiffnessLoss:
         self.lagrange_over_batch = lagrange / batch_size
 
     def __call__(self, model, inputs):
-        blocks = []
-        blocks += [model.block_1(inputs)]
-        blocks += [model.block_2(inputs)]
-        blocks += [model.block_3(inputs)]
-        blocks += [model.block_4(inputs)]
-        blocks += [model.block_5(inputs)]
-        blocks += [model.block_6(inputs)]
-        blocks += [model.block_7(inputs)]
-        blocks += [model.block_8(inputs)]
-        blocks += [model.block_9(inputs)]
+        # blocks = []
 
-        eigen_maxes = []
-        for block, input in blocks: eigen_maxes += [self.calculate_stiffness(block, input)]
+        block_input = torch.nn.functional.relu(model.bn1(model.conv1(inputs)))
+        # print('* * * block_input', list(block_input.shape)) # [128, 16, 32, 32]
 
-        return torch.mean(torch.tensor(eigen_maxes)) * self.lagrange_over_batch
+        block_1 = model.layer1[0].conv1
+        # print('* * * block', block_1)
 
-    def calculate_stiffness(self, block, inputs):
-        print('. . . jacobians = torch.autograd.functional.jacobian(block, inputs)')
-        jacobians = torch.autograd.functional.jacobian(block, inputs)
-        print('. . . eigen_values = self.get_eigenvalues(jacobians)')
-        eigen_values = self.get_eigenvalues(jacobians)
-        return torch.max(eigen_values)
+        block_input = block_input.detach().clone().cuda()
+        block_input.requires_grad = True
+        block_output = block_1(block_input)
+        # print('* * * block_output', list(block_output.shape))
+        jacobian = torch.zeros(*list(block_output.shape), 32).cuda()
+        # print('* * * jacobian', list(jacobian.shape))
 
-    def get_eigenvalues(self, jacobians):
-        eigen_values, _eigen_vectors = torch.linalg.eig(jacobians)
-        return torch.real(eigen_values)
+        for i in range(32):
+            block_gradient = torch.zeros(block_output.shape).cuda()
+            block_gradient[0, 0, 0, i] = 1
+            block_output.backward(gradient=block_gradient, retain_graph=True)
+            jacobian[:, :, :, :, i] = block_input.grad
+            block_input.grad.zero_()
+        
+        # blocks += [(block_1, block_input)]
+
+        # blocks += [model.block_1(inputs)]
+        # blocks += [model.block_2(inputs)]
+        # blocks += [model.block_3(inputs)]
+        # blocks += [model.block_4(inputs)]
+        # blocks += [model.block_5(inputs)]
+        # blocks += [model.block_6(inputs)]
+        # blocks += [model.block_7(inputs)]
+        # blocks += [model.block_8(inputs)]
+        # blocks += [model.block_9(inputs)]
+
+        # eigen_maxes = []
+        # for block, input in blocks: eigen_maxes += [self.calculate_stiffness(block, input)]
+        eigen_values, _eigen_vectors = torch.linalg.eig(jacobian)
+        return torch.mean(torch.max(torch.real(eigen_values))) * self.lagrange_over_batch
+
+    # def calculate_stiffness(self, block, inputs):
+    #     # jacobians = torch.autograd.functional.jacobian(block.half(), inputs.half(), vectorize=True, strategy='forward-mode')
+    #     # jacobians = torch.autograd.functional.jvp(block, inputs, torch.ones(inputs.shape).cuda())
+    #     # jacobians = torch.func.jacfwd(block)(inputs)
+    #     # print('. . . eigen_values = self.get_eigenvalues(jacobians)')
+    #     # eigen_values = self.get_eigenvalues(jacobians)
+    #     # return torch.max(eigen_values)
+    #     return 0
+
+    # def get_eigenvalues(self, jacobians):
+    #     eigen_values, _eigen_vectors = torch.linalg.eig(jacobians)
+    #     return torch.real(eigen_values)
 
 class BasicBlock(torch.nn.Module):
     expansion = 1

@@ -6,6 +6,7 @@ import torchvision
 
 from resnet import StiffnessLoss, resnet20
 
+from data import cifar10
 from learners import test, train
 from utils import format_time, logger
 
@@ -21,28 +22,12 @@ def main():
     parser.add_argument('--weight-decay', default=1.e-4, type=float, help='weight decay (default: 1.e-4)')
     arguments = parser.parse_args()
 
-    train_transforms = [torchvision.transforms.ToTensor()]
-    test_transforms = [torchvision.transforms.ToTensor()]
-
-    train_transforms = [
-        torchvision.transforms.RandomCrop(32, padding=4, pad_if_needed=True, padding_mode='reflect'),
-        torchvision.transforms.RandomHorizontalFlip(),
-    ] + train_transforms
-
-    normalization = torchvision.transforms.Normalize(mean=[0.49139968, 0.48215841, 0.44653091], std=[0.24703223, 0.24348513, 0.26158784])
-    train_transforms += [normalization]
-    test_transforms += [normalization]
-
-    train_dataset = torchvision.datasets.CIFAR10(root='data', train=True, transform=torchvision.transforms.Compose(train_transforms), download=True)
-    test_dataset = torchvision.datasets.CIFAR10(root='data', train=False, transform=torchvision.transforms.Compose(test_transforms), download=True)
-    train_data = torch.utils.data.DataLoader(train_dataset, batch_size=arguments.batch_size, shuffle=True)
-    test_data = torch.utils.data.DataLoader(test_dataset, batch_size=512, shuffle=False)
-
     model = None
 
     if arguments.model == 'resnet20': model = resnet20()
     else: pass
 
+    train_data, test_data = cifar10(arguments.batch_size)
     objective = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=arguments.learning_rate, momentum=arguments.momentum, weight_decay=arguments.weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=.1, patience=10)
@@ -50,18 +35,18 @@ def main():
     model.to(device)
 
     best = {'train_loss': float('inf'), 'train_epoch': 0, 'test_loss': float('inf'), 'test_epoch': 0}
-    save_path = pathlib.Path(arguments.model)
+    save_path = pathlib.Path('.') / 'experiments' / arguments.model
     checkpoints_path = save_path / 'checkpoints'
-    save_path.mkdir(exist_ok=True)
+    save_path.mkdir(parents=True, exist_ok=True)
     checkpoints_path.mkdir(exist_ok=True)
 
-    our_loss = StiffnessLoss(arguments.lagrange, arguments.batch_size) if arguments.ours else None
+    regularizer = StiffnessLoss(arguments.lagrange, arguments.batch_size) if arguments.ours and arguments.lagrange > 0 else None
 
     start_time = time.time()
 
     for epoch in range(1, arguments.epochs+1):
         epoch_time = time.time()
-        train_accuracy, train_loss, stiffness_loss = train(model, train_data, device, objective, optimizer, our_loss)
+        train_accuracy, train_loss, regularization = train(model, train_data, device, objective, optimizer, regularizer)
         test_accuracy, test_loss = test(model, test_data, device, objective)
         scheduler.step(train_loss)
         if train_loss < best['train_loss']: best['train_loss'], best['train_epoch'] = train_loss, epoch
@@ -70,7 +55,7 @@ def main():
         end_time = time.time()
 
         logger([
-            epoch, stiffness_loss,
+            epoch, regularization,
             train_accuracy, train_loss, best['train_epoch'], test_accuracy, test_loss, best['test_epoch'],
             format_time(end_time - start_time),
             format_time((end_time - start_time) * (arguments.epochs - epoch) / epoch),

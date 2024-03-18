@@ -1,6 +1,6 @@
 import torch, torchvision
 
-def cifar10(batch_size):
+def cifar10(batch_size, shuffle=True):
     train_transforms = [torchvision.transforms.ToTensor()]
     test_transforms = [torchvision.transforms.ToTensor()]
 
@@ -15,7 +15,7 @@ def cifar10(batch_size):
 
     train_dataset = torchvision.datasets.CIFAR10(root='data', train=True, transform=torchvision.transforms.Compose(train_transforms), download=True)
     test_dataset = torchvision.datasets.CIFAR10(root='data', train=False, transform=torchvision.transforms.Compose(test_transforms), download=True)
-    train_data = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_data = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
     test_data = torch.utils.data.DataLoader(test_dataset, batch_size=512, shuffle=False)
 
     return train_data, test_data

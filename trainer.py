@@ -3,12 +3,15 @@ import pathlib
 import time
 import torch
 import torchvision
+import torchvision.transforms as transforms
+import numpy as np
 
 from resnet import StiffnessLoss, resnet20
 
 from data import cifar10
 from learners import test, train
 from utils import format_time, logger
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -20,12 +23,30 @@ def main():
     parser.add_argument('--momentum', default=.9, type=float, help='momentum (default: .9)')
     parser.add_argument('--ours', action=argparse.BooleanOptionalAction, default=False, type=bool)
     parser.add_argument('--weight-decay', default=1.e-4, type=float, help='weight decay (default: 1.e-4)')
+    # parser.add_argument('--num-divisions', default=1, type=int)
+    # parser.add_argument('--division', default=1, type=int)
     arguments = parser.parse_args()
 
     model = None
 
     if arguments.model == 'resnet20': model = resnet20()
     else: pass
+
+    # transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    #
+    # trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=False, transform=transform)
+    # trainloader = torch.utils.data.DataLoader(trainset, batch_size=arguments.batch_size, shuffle=True, num_workers=2)
+    # testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transform)
+    # testloader = torch.utils.data.DataLoader(testset, batch_size=arguments.batch_size, shuffle=False, num_workers=2)
+    #
+    # divisions = np.array_split(np.arange(len(trainloader.dataset)), arguments.num_divisions)
+    # indices = np.array(divisions[arguments.division - 1])
+    # subset = torch.utils.data.Subset(trainloader.dataset, indices=indices)
+    # divloader = torch.utils.data.DataLoader(subset, batch_size=arguments.batch_size, shuffle=False)
+    # assert (len(divloader) == indices.shape[0])
+
+    # train_data = divloader.dataset if arguments.num_divisions > 1 else trainloader.dataset
+    # test_data = testloader.dataset
 
     train_data, test_data = cifar10(arguments.batch_size)
     objective = torch.nn.CrossEntropyLoss()

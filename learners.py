@@ -1,6 +1,8 @@
 import torch
 
+
 def score(outputs, labels): return torch.sum(torch.eq(labels, torch.argmax(outputs, dim=1))).item()
+
 
 def train(model, data, device, objective, optimizer, regularizer=None):
     model.train(True)

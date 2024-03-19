@@ -88,6 +88,8 @@ def main():
     parser.add_argument('--inspect', default=20, type=int)
     parser.add_argument('--model', default='resnet20', type=str)
     parser.add_argument('--validate', action=argparse.BooleanOptionalAction, default=False, type=bool)
+    parser.add_argument('--num-divisions', default=1, type=int)
+    parser.add_argument('--division', default=1, type=int)
     arguments = parser.parse_args()
 
     model, model_path = None, None
@@ -102,7 +104,7 @@ def main():
     load_path = pathlib.Path('.') / 'experiments' / model_path / 'checkpoints' / f'{arguments.checkpoint:03}.pt'
     model.load_state_dict(torch.load(load_path, map_location=torch.device(device)), strict=False)
     print('load', load_path)
-    train_data, test_data = cifar10(arguments.batch_size, shuffle=False)
+    train_data, test_data = cifar10(arguments.batch_size, False, arguments.num_divisions, arguments.division)
 
     test_accuracy, test_loss = test(model, test_data, device)
     print(test_accuracy, test_loss)

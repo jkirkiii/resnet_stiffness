@@ -1,22 +1,18 @@
 import random
 import torch
 import pathlib
-import time
 import numpy as np
 import matplotlib.pyplot as plt
 
 from torch.utils.data import Dataset
 from resnet import resnet20
 from data import cifar10
-from utils import format_time
 
 
 # to test code in this file
 def main():
-    # load data
     train_data, test_data = cifar10(256)
 
-    # load model checkpoint
     model = resnet20()
     checkpoints_path = pathlib.Path('.') / 'experiments' / 'resnet20' / 'checkpoints' / '150.pt'
     state_dict = torch.load(checkpoints_path, map_location=torch.device('cpu'))
@@ -25,16 +21,13 @@ def main():
     # create adversarial images and save them to files
     root_path = pathlib.Path('.') / 'experiments'
     for i, (inputs, labels) in enumerate(train_data):
-        _s_ = time.time()
-        adv_images = pgd_attack(model, torch.nn.CrossEntropyLoss(), inputs, labels, 1, .1, 10)
+        adv_images = pgd_attack(model, torch.nn.CrossEntropyLoss(), inputs, labels, 1, .1, 1)
         adv_images_path = root_path / f'adv_images{i + 1:03d}'
         save_adv_images(adv_images, adv_images_path)
-        _e_ = time.time()
-        print(format_time(_e_ - _s_, fine=True))
-        show_images(root_path / (adv_images_path.name + '.npy'))
+        # show_images(root_path / (adv_images_path.name + '.npy'))
 
-    # filenames = [str(p) for p in root_path.glob('adv_images*.npy')]
-    # dataset = AdversarialImageDataset(filenames)
+    filenames = [str(p) for p in root_path.glob('adv_images*.npy')]
+    dataset = AdversarialImageDataset(filenames)
 
 
 def pgd_attack(model, objective, images, labels, epsilon, alpha, num_iters):
@@ -97,12 +90,6 @@ def show_images(filename, num_images=10, num_cols=5, figsize=(10, 10)):
         image = selected_images[i].transpose(1, 2, 0)  # Reshape to (height, width, channels)
         axes[row, col].imshow(image)
         axes[row, col].axis('off')
-
-    # # Hide extra axes if there are fewer images than the grid can hold
-    # for r in range(num_rows):
-    #     for c in range(num_cols):
-    #         if r * num_cols + c >= num_images:
-    #             axes[r, c].axis('off')
 
     plt.tight_layout()
     plt.show()

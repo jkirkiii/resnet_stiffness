@@ -48,7 +48,7 @@ class SpectralNorm(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=False):
         super(SpectralNorm, self).__init__()
         self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)
-        self.spectral_norm = torch.nn.utils.spectral_norm(self.conv.weight, n_power_iterations=5)
+        torch.nn.utils.parametrizations.spectral_norm(self.conv, n_power_iterations=5)
 
     def forward(self, x):
         return self.conv(x)
@@ -112,7 +112,7 @@ class ResNet(torch.nn.Module):
         layers, strides = [], [stride] + [1] * (num_blocks - 1)
 
         for stride in strides:
-            layers += [block(self.in_planes, planes, stride, use_spectral_norm=False)]
+            layers += [block(self.in_planes, planes, stride, use_spectral_norm=use_spectral_norm)]
             self.in_planes = planes * block.expansion
 
         return torch.nn.Sequential(*layers)

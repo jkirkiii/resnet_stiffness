@@ -48,7 +48,7 @@ class SpectralNorm(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=False):
         super(SpectralNorm, self).__init__()
         self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)
-        torch.nn.utils.parametrizations.spectral_norm(self.conv, n_power_iterations=5)
+        torch.nn.utils.parametrizations.spectral_norm(self.conv, n_power_iterations=1)
 
     def forward(self, x):
         return self.conv(x)

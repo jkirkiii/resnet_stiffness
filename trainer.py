@@ -3,6 +3,7 @@ import datetime
 import pathlib
 import time
 import torch
+import torch.cuda
 import torchvision
 import torchvision.transforms as transforms
 import numpy as np
@@ -16,7 +17,7 @@ from stiffness import TotalNeuralStiffness
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch-size', default=128, type=int, help='mini-batch size (default: 256)')
+    parser.add_argument('--batch-size', default=256, type=int, help='mini-batch size (default: 256)')
     parser.add_argument('--device', default='', type=str)
     parser.add_argument('--epochs', default=200, type=int, help='number of total epochs to run')
     parser.add_argument('--lagrange', default=1., type=float)
@@ -28,6 +29,7 @@ def main():
     parser.add_argument('--spectral-norm', action=argparse.BooleanOptionalAction, default=False, type=bool)
     parser.add_argument('--num-divisions', default=1, type=int)
     parser.add_argument('--division', default=1, type=int)
+    parser.add_argument('--pgd', action=argparse.BooleanOptionalAction, default=False, type=bool)
     arguments = parser.parse_args()
 
     model = None
@@ -39,6 +41,7 @@ def main():
     objective = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=arguments.learning_rate, momentum=arguments.momentum, weight_decay=arguments.weight_decay)
     regularizer = TotalNeuralStiffness(lagrange=arguments.lagrange) if arguments.ours and arguments.lagrange > 0 else None
+    pgd = arguments.pgd
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=.1, patience=10)
     device = ('cuda' if torch.cuda.is_available() else 'cpu') if arguments.device == '' else arguments.device
     model.to(device)
@@ -54,7 +57,7 @@ def main():
 
     for epoch in range(1, arguments.epochs+1):
         epoch_time = time.time()
-        train_accuracy, train_loss, train_regularization = train(model, train_data, device, objective, optimizer, regularizer)
+        train_accuracy, train_loss, train_regularization = train(model, train_data, device, objective, optimizer, regularizer, pgd)
         test_accuracy, test_loss, test_regularization = test(model, test_data, device, objective, regularizer)
         scheduler.step(train_loss)
         if train_loss < best['train_loss']: best['train_loss'], best['train_epoch'] = train_loss, epoch

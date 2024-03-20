@@ -1,16 +1,20 @@
 import torch
+from pgdattack import pgd_attack
 
 
 def score(outputs, labels): return torch.sum(torch.eq(labels, torch.argmax(outputs, dim=1))).item()
 
 
-def train(model, data, device, objective, optimizer, regularizer=None):
+def train(model, data, device, objective, optimizer, regularizer=None, pgd=False):
     model.train(True)
 
     running_correct, running_loss, running_regularization = 0, 0, 0
 
     for inputs, labels in data:
         inputs, labels = inputs.to(device), labels.to(device)
+
+        if pgd:
+            inputs = pgd_attack(model, torch.nn.CrossEntropyLoss(), inputs, labels, .01, .005, 5)
 
         outputs = model(inputs)
         loss = objective(outputs, labels)

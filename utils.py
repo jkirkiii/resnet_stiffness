@@ -28,9 +28,9 @@ def generate_color_transition(start_color, end_color, length):
 
 def generate_random_colors(length): return [f'#{random.randint(0, 0xffffff):06x}' for _ in range(length)] # generate a random hex color code
 
-def logger(row, path: pathlib.Path, *, name='log', verbose=True):
+def logger(row, path: pathlib.Path, *, silent=[], name='log', verbose=True):
     log_path = path / f'{name}.csv'
-    with open(log_path, 'a') as file: csv.writer(file).writerow(row)
+    with open(log_path, 'a') as file: csv.writer(file).writerow(row + silent)
     if verbose: print(*row)
     return log_path
 

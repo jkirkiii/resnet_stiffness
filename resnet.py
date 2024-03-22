@@ -28,6 +28,7 @@ If you use this implementation in you work, please don't forget to mention the
 author, Yerlan Idelbayev.
 '''
 
+
 import torch
 
 
@@ -131,18 +132,8 @@ class ResNet(torch.nn.Module):
 
 
 def resnet20(*, power_iterations=1, spectral_norm=False): return ResNet(BasicBlock, [3, 3, 3], power_iterations=power_iterations, use_spectral_norm=spectral_norm)
-
-
 def resnet32(): return ResNet(BasicBlock, [5, 5, 5])
-
-
 def resnet44(): return ResNet(BasicBlock, [7, 7, 7])
-
-
 def resnet56(): return ResNet(BasicBlock, [9, 9, 9])
-
-
 def resnet110(): return ResNet(BasicBlock, [18, 18, 18])
-
-
 def resnet1202(): return ResNet(BasicBlock, [200, 200, 200])

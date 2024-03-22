@@ -30,7 +30,7 @@ def main():
     dataset = AdversarialImageDataset(filenames)
 
 
-def pgd_attack(model, objective, images, labels, epsilon, alpha, num_iters):
+def pgd_attack(model, objective, images, labels, epsilon=.03, alpha=.01, num_iters=5):
     """
     Perform Projected Gradient Descent (PGD) attack on the given model.
 

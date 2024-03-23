@@ -7,7 +7,7 @@ from data import cifar10
 from resnet import resnet20
 from learners import test
 from utils import format_time
-from stiffness import gelfands, get_jacobian, power_iteration
+from stiffness import gelfand, get_jacobian, power_iteration
 
 import torch
 
@@ -68,7 +68,7 @@ def main():
     t = time.time()
     jacobian = torch.func.jacrev(block)(block_inputs)
     t = time.time() - t
-    print(format_time(t, fine=True), torch.linalg.vector_norm(jacobian).item(), 'torch.func.jacrev()', list(jacobian.shape))
+    print(format_time(t, fine=True), torch.linalg.vector_norm(jacobian).item(), 'torch.func.jacrev()', list(jacobian.shape), jacobian.numel())
 
     # t = time.time()
     # eigen_values, _eigen_vectors = torch.linalg.eig(jacobian)
@@ -88,7 +88,7 @@ def main():
     print(format_time(t, fine=True), eigen_max.item(), 'power_iteration()')
 
     t = time.time()
-    eigen_max = gelfands(jacobian)
+    eigen_max = gelfand(jacobian)
     t = time.time() - t
     print(format_time(t, fine=True), eigen_max.item(), 'gelfands()')
 

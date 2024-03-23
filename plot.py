@@ -25,15 +25,15 @@ def plot_training(
         scale=2,
         show=['test', 'train'],
 ):
-    figure, loss_plt = plt.subplots(facecolor='white', figsize=(4*scale, 3*scale))
-    accuracy_plt = loss_plt.twinx()
-    regularization_plt = loss_plt.twinx()
+    figure, regularization_plt = plt.subplots(facecolor='white', figsize=(4*scale, 3*scale))
+    accuracy_plt = regularization_plt.twinx()
+    loss_plt = regularization_plt.twinx()
 
     experiment_path = pathlib.Path(path)
 
     random_colors = generate_random_colors(length)
 
-    for i, (label, loss_color, accuracy_color) in enumerate(zip(
+    for _i, (label, loss_color, accuracy_color) in enumerate(zip(
         labels if labels != [] else range(1, length+1),
         loss_colors if loss_colors != [] else random_colors,
         accuracy_colors if accuracy_colors != [] else random_colors,
@@ -60,41 +60,46 @@ def plot_training(
         # epoch_time = np.array(rows[:, 9], dtype=str)
         # learning_rate = np.array(rows[:, 10], dtype=float)
         # train_regularization = np.array(rows[:, 11], dtype=float)
-
-        deltas = []
-        deltas += [np.array(rows[:, 18], dtype=float)]
-        deltas += [np.array(rows[:, 17], dtype=float)]
-        deltas += [np.array(rows[:, 16], dtype=float)]
-        deltas += [np.array(rows[:, 15], dtype=float)]
-        deltas += [np.array(rows[:, 14], dtype=float)]
-        deltas += [np.array(rows[:, 13], dtype=float)]
-        deltas += [np.array(rows[:, 12], dtype=float)]
+        # train_deltas = [np.array(rows[:, 11+j+1], dtype=float) for j in range(7)]
+        train_deltas = []
+        # train_deltas += [np.array(rows[:, 11+1], dtype=float)]
+        train_deltas += [np.array(rows[:, 11+2], dtype=float)]
+        train_deltas += [np.array(rows[:, 11+3], dtype=float)]
+        train_deltas += [np.array(rows[:, 11+4], dtype=float)]
+        train_deltas += [np.array(rows[:, 11+5], dtype=float)]
+        train_deltas += [np.array(rows[:, 11+6], dtype=float)]
+        train_deltas += [np.array(rows[:, 11+7], dtype=float)]
+        train_deltas = list(reversed(train_deltas))
+        # test_regularization = np.array(rows[:, 19], dtype=float)
+        # test_deltas = [np.array(rows[:, 19+j+1], dtype=float) for j in range(7)]
 
         if 'regularization' in show:
             for i, (delta, color) in enumerate(zip(
-                deltas,
-                generate_random_colors(len(deltas)),
-                # generate_color_transition('#00ff00', '#ff00ff', len(deltas)),
+                train_deltas,
+                # generate_random_colors(7),
+                generate_color_transition('#0000FF', '#FF0000', 7),
             )):
-                regularization_plt.plot(epochs, delta,  alpha=.8, color=color, label=f'{i+1}', linestyle='solid')
+                regularization_plt.plot(epochs, delta,  alpha=.9, color=color, label=f'{i+1}', linestyle='solid')
 
-            regularization_plt.axis('off')
+            # regularization_plt.axis('off')
 
         if 'test' in show:
-            loss_plt.plot(epochs, test_loss, alpha=.8, color=loss_color, linestyle='solid', label='test loss')
-            loss_plt.plot(epochs, get_min(test_loss), alpha=.4, color=loss_color, linestyle='dotted')
-            if 'accuracy' in show: accuracy_plt.plot(epochs, test_accuracy, alpha=.8, color=accuracy_color, linestyle='solid', label='test acc.')
+            loss_plt.plot(epochs, test_loss, alpha=.4, color=loss_color, linestyle='dashed', label='test loss')
+            # loss_plt.plot(epochs, get_min(test_loss), alpha=.3, color=loss_color, linestyle='dotted')
+            if 'accuracy' in show: accuracy_plt.plot(epochs, test_accuracy, alpha=.4, color=accuracy_color, linestyle='dashed', label='test acc.')
 
         if 'train' in show:
-            loss_plt.plot(epochs, train_loss, alpha=.4, color=loss_color, linestyle='dashed', label='train loss')
-            if 'accuracy' in show: accuracy_plt.plot(epochs, train_accuracy, alpha=.4, color=accuracy_color, linestyle='dashed', label='train acc.')
+            loss_plt.plot(epochs, train_loss, alpha=.4, color=loss_color, linestyle='dotted', label='train loss')
+            if 'accuracy' in show: accuracy_plt.plot(epochs, train_accuracy, alpha=.4, color=accuracy_color, linestyle='dotted', label='train acc.')
 
     if 'checkpoints' in show:
-        for checkpoint in checkpoints: plt.axvline(x=checkpoint, alpha=.8, color='k', label=str(checkpoint), linestyle='--')
+        for checkpoint in checkpoints: plt.axvline(x=checkpoint, alpha=.4, color='k', label=str(checkpoint), linestyle='--')
 
-    loss_plt.set_xlabel('Epochs')
-    loss_plt.set_ylabel('Loss')
-    accuracy_plt.set_ylabel('Accuracy')
+    regularization_plt.set_xlabel('Epochs')
+    loss_plt.axis('off')
+    accuracy_plt.axis('off')
+    regularization_plt.set_ylabel('Total Neural Stiffness')
+    regularization_plt.set_ylim([.00075, .0045]) # .011
     regularization_plt.legend()
     figure.tight_layout()
     figure.savefig(experiment_path / 'training')
@@ -106,5 +111,12 @@ if __name__ == '__main__':
 
     plot_training(
         f'experiments/{arguments.name}',
-        show=['regularization'],
+        show=[
+            'accuracy',
+            'regularization',
+            'test',
+            'train',
+        ],
+        loss_colors=['#ff00ff'],
+        accuracy_colors=['#00ff00'],
     )

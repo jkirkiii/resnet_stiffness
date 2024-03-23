@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--num-divisions', default=1, type=int)
     parser.add_argument('-p', '--power-iterations', default=30, type=int)
     parser.add_argument('--pgd', action=argparse.BooleanOptionalAction, default=False, type=bool)
+    parser.add_argument('-r', '--regularize', action=argparse.BooleanOptionalAction, default=False, type=bool)
     parser.add_argument('--spectral-norm', action=argparse.BooleanOptionalAction, default=False, type=bool)
     parser.add_argument('-s', '--sample', default=1, type=int)
     parser.add_argument('-w', '--weight-decay', default=5.e-4, type=float, help='weight decay (default: 5.e-4)')
@@ -39,8 +40,7 @@ def main():
     train_data, test_data = cifar10(arguments.batch_size, arguments.num_divisions, arguments.division)
     objective = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=arguments.learning_rate, momentum=arguments.momentum, weight_decay=arguments.weight_decay)
-    regularizer = StiffnessIndex(lagrange=arguments.lagrange) if arguments.lagrange > 0. else None
-    index = TotalNeuralStiffness()
+    regularizer = TotalNeuralStiffness(lagrange=arguments.lagrange) if arguments.regularize else None
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=.1, patience=10)
     device = ('cuda' if torch.cuda.is_available() else 'cpu') if arguments.device == '' else arguments.device
     model.to(device)
@@ -56,8 +56,8 @@ def main():
 
     for epoch in range(1, arguments.epochs+1):
         epoch_time = time.time()
-        train_accuracy, train_loss, train_regularization, train_deltas = train(model, train_data, device, objective, optimizer, index, regularizer, arguments.sample, arguments.pgd)
-        test_accuracy, test_loss, test_regularization, test_deltas = test(model, test_data, device, objective, index, regularizer, arguments.sample)
+        train_accuracy, train_loss, train_regularization, train_deltas = train(model, train_data, device, objective, optimizer, regularizer, arguments.pgd)
+        test_accuracy, test_loss, test_regularization, test_deltas = test(model, test_data, device, objective, regularizer)
         scheduler.step(train_loss)
         if train_loss < best['train_loss']: best['train_loss'], best['train_epoch'] = train_loss, epoch
         if test_loss < best['test_loss']: best['test_loss'], best['test_epoch']= test_loss, epoch

@@ -2,11 +2,9 @@ import torch
 
 from pgdattack import pgd_attack
 
-
 def score(outputs, labels): return torch.sum(torch.eq(labels, torch.argmax(outputs, dim=1))).item()
 
-
-def train(model, data, device, objective, optimizer, index=None, regularizer=None, sample=1, pgd=False):
+def train(model, data, device, objective, optimizer, regularizer=None, pgd=False):
     model.train(True)
 
     running_correct, running_loss, running_regularization, running_deltas = 0, 0, 0, None
@@ -17,23 +15,14 @@ def train(model, data, device, objective, optimizer, index=None, regularizer=Non
         outputs = model(pgd_attack(model, objective, inputs, labels) if pgd else inputs)
         loss = objective(outputs, labels)
 
-        if index != None:
-            _, deltas = index(model, inputs)
+        if regularizer != None:
+            regularization, deltas, _ = regularizer(model, inputs)
+            loss += regularization / inputs.shape[0]
+            running_regularization += regularization.item()
+
             if running_deltas != None: running_deltas += deltas
             else: running_deltas = deltas
 
-        # if regularizer != None:
-        #     model.train(False)
-        #     samples = inputs[:sample, :, :, :]
-
-        #     for i in range(samples.shape[0]): # samples must be run one at a time
-        #         input = samples[i].unsqueeze(0)
-        #         regularization, _ = regularizer(model, input)
-        #         regularization /= sample
-        #         loss += regularization
-        #         running_regularization += regularization.item()
-        
-        model.train(True)
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -48,7 +37,7 @@ def train(model, data, device, objective, optimizer, index=None, regularizer=Non
     return average_accuracy, average_loss, average_regularization, average_deltas
 
 
-def test(model, data, device, objective=None, index=None, regularizer=None, sample=1, pgd=False):
+def test(model, data, device, objective=None, regularizer=None, pgd=False):
     model.train(False)
 
     running_correct, running_loss, running_regularization, running_deltas = 0, 0, 0, None
@@ -63,20 +52,13 @@ def test(model, data, device, objective=None, index=None, regularizer=None, samp
             if objective != None:
                 loss = objective(outputs, labels)
 
-                if index != None:
-                    _, deltas = index(model, inputs)
+                if regularizer != None:
+                    regularization, deltas, _ = regularizer(model, inputs)
+                    loss += regularization / inputs.shape[0]
+                    running_regularization += regularization.item()
+
                     if running_deltas != None: running_deltas += deltas
                     else: running_deltas = deltas
-
-                # if regularizer != None:
-                #     samples = inputs[:sample, :, :, :]
-
-                #     for i in range(samples.shape[0]):
-                #         input = samples[i].unsqueeze(0)
-                #         regularization, _ = regularizer(model, input)
-                #         regularization /= sample
-                #         loss += regularization
-                #         running_regularization += regularization.item()
 
                 running_loss += loss.item() * inputs.shape[0]
 

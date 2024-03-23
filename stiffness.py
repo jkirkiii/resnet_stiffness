@@ -9,10 +9,10 @@ from learners import test, score
 from resnet import resnet20
 from utils import format_time
 
-#   https://en.wikipedia.org/wiki/Spectral_radius#Gelfand's_formula
-def gelfands(m, iterations=10, epsilon=1.e-9):
+#   `https://en.wikipedia.org/wiki/Spectral_radius#Gelfand's_formula`
+def gelfand(m, iterations=10, epsilon=1.e-9):
     with torch.no_grad():
-        r = torch.linalg.vector_norm(m.view(-1))
+        r = torch.linalg.vector_norm(m.view(-1)) # Frobenius
         a = m / (r + epsilon)
         p = r
 
@@ -24,6 +24,7 @@ def gelfands(m, iterations=10, epsilon=1.e-9):
 
         return p
 
+#   https://en.wikipedia.org/wiki/Power_iteration
 def power_iteration(m, device, iterations=30, epsilon=1.e-6, check=False):
     with torch.no_grad():
         x = torch.randn(*m.shape[1:]).to(device) # random initialization of the eigenvector
@@ -93,8 +94,9 @@ class TotalNeuralStiffness(Stiffness):
         for i in range(len(b_i_3)-1, 0, -1): deltas += [torch.linalg.vector_norm(b_i_3[i] - b_i_3[i-1]) / torch.linalg.vector_norm(b_i_3[i-1])]
         for i in range(len(b_i_2)-1, 0, -1): deltas += [torch.linalg.vector_norm(b_i_2[i] - b_i_2[i-1]) / torch.linalg.vector_norm(b_i_2[i-1])]
         for i in range(len(b_i_1)-1, 0, -1): deltas += [torch.linalg.vector_norm(b_i_1[i] - b_i_1[i-1]) / torch.linalg.vector_norm(b_i_1[i-1])]
+        deltas_tensor = torch.tensor(list(reversed(deltas)))
 
-        return torch.mean(torch.tensor(deltas)) * self.lagrange, torch.tensor(deltas) if self.per_block else None
+        return torch.mean(deltas_tensor) * self.lagrange, deltas_tensor if self.per_block else None, None # outputs
 
 class StiffnessIndex(Stiffness):
     def __init__(self, full=True, lagrange=1., validate=False, vectorize=True):
@@ -113,19 +115,21 @@ class StiffnessIndex(Stiffness):
             for block, block_input in zip(blocks, block_inputs[:-1]):
                 jacobian = torch.func.jacrev(block)(block_input) # if self.vectorize else torch.autograd.functional.jacobian(block, block_input)
                 eigen_values = torch.linalg.eigvals(jacobian)
-                eigen_max = torch.max(torch.real(eigen_values))
-                eigen_min = torch.min(torch.real(eigen_values))
+                eigen_reals = torch.real(eigen_values)
+                eigen_max = torch.max(eigen_reals)
+                eigen_min = torch.min(eigen_reals)
                 block_stiffness_index = torch.abs(eigen_max / eigen_min) if self.full else torch.abs(eigen_max)
                 stiffness_indices += [block_stiffness_index]
-                # stiffness_indices.append(gelfands(jacobian).item())
 
-        # if self.validate:
-        #     outputs = block_inputs[-1]
-        #     outputs = torch.nn.functional.avg_pool2d(outputs, outputs.size()[3])
-        #     outputs = outputs.view(outputs.size(0), -1)
-        #     outputs = model.linear(outputs)
+        stiffness_tensor = torch.tensor(stiffness_indices)
 
-        return torch.mean(torch.tensor(stiffness_indices)) * self.lagrange, None # outputs if self.validate else None
+        if self.validate:
+            outputs = block_inputs[-1]
+            outputs = torch.nn.functional.avg_pool2d(outputs, outputs.size()[3])
+            outputs = outputs.view(outputs.size(0), -1)
+            outputs = model.linear(outputs)
+
+        return torch.mean(stiffness_tensor) * self.lagrange, stiffness_tensor, outputs if self.validate else None
 
 def main():
     parser = argparse.ArgumentParser()
@@ -165,7 +169,7 @@ def main():
         print(test_accuracy, test_loss)
 
     if arguments.stiffness_index == 'true': stiffness_index = StiffnessIndex(full=arguments.full, validate=arguments.validate)
-    elif arguments.stiffness_index == 'total': stiffness_index = TotalNeuralStiffness()
+    elif arguments.stiffness_index == 'tns': stiffness_index = TotalNeuralStiffness()
     else: pass
 
     stiffnesses = []
@@ -177,12 +181,14 @@ def main():
         for j in range(samples.shape[0]):
             input, label = samples[j].unsqueeze(0), sample_labels[j].unsqueeze(0)
             t = time.time()
-            full_stiffness_index, output = stiffness_index(model, input.to(device))
+            full_stiffness_index, deltas, output = stiffness_index(model, input.to(device))
             t = time.time() - t
-            print(arguments.stiffness_index, full_stiffness_index.item(), format_time(t, fine=True), end=' ')
+            print(arguments.stiffness_index, full_stiffness_index.item(), format_time(t, fine=True))
+
+            # if deltas != None:
+            #     for k, delta in enumerate(deltas.tolist()): print(k+1, delta)
 
             if arguments.validate: print(score(output, label.to(device)), label.item())
-            else: print()
 
             stiffnesses += [full_stiffness_index.item()]
 
